@@ -24,8 +24,8 @@
     <!--
         This permission is required to use the `PlaceListMapTemplate` and should only be declared
         by apps declaring the `androidx.car.app.category.POI` category
-    -->
     <uses-permission android:name="androidx.car.app.MAP_TEMPLATES" />
+    -->
 
     <application>
         <!--
@@ -42,7 +42,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
-                <category android:name="androidx.car.app.category.POI" />
+                <category android:name="androidx.car.app.category.IOT" />
             </intent-filter>
         </service>
     </application>
