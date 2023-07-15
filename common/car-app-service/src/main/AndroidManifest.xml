@@ -38,7 +38,7 @@
             android:value="1" />
 
         <service
-            android:name="com.gladysassistant.android.auto.carappservice.PlacesCarAppService"
+            android:name="com.gladysassistant.android.auto.carappservice.GladysCarAppService"
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />

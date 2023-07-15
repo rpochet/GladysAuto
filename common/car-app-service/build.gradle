@@ -20,7 +20,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.android.cars.carappservice'
+    namespace 'com.gladysassistant.android.auto.carappservice'
     compileSdk 33
 
     defaultConfig {

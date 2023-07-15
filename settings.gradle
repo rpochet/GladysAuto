@@ -28,7 +28,7 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Places"
+rootProject.name = "Gladys"
 include ':app'
 include ':automotive'
 include ':common:data'
