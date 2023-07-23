@@ -39,10 +39,8 @@ import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gladysassistant.android.auto.data.GladysRepository
-import com.gladysassistant.android.auto.data.model.DeviceFeature
 import com.gladysassistant.android.auto.data.model.toIntent
 import com.gladysassistant.android.auto.ui.theme.GladysTheme
 
@@ -69,7 +67,7 @@ class MainActivity : ComponentActivity() {
                             carConnectionType = carConnectionType,
                             modifier = Modifier.padding(8.dp)
                         )
-                        PlaceList(deviceFeatures = GladysRepository().getDeviceFeatures())
+                        DeviceFeatureList()
                     }
                 }
             }
@@ -94,9 +92,9 @@ fun ProjectionState(carConnectionType: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun PlaceList(deviceFeatures: List<DeviceFeature>) {
+fun DeviceFeatureList() {
     val context = LocalContext.current
-
+    val deviceFeatures = GladysRepository(context).getDeviceFeatures()
     LazyColumn {
         items(deviceFeatures.size) {
             val deviceFeature = deviceFeatures[it]

@@ -17,4 +17,7 @@
 <resources>
     <string name="app_name">Gladys</string>
     <string name="devices">Devices</string>
+    <string name="no_devices">No devices to show</string>
+    <string name="configuration">Configuration</string>
+    <string name="configuration_instructions">Please enter your Gladys user and password </string>
 </resources>
