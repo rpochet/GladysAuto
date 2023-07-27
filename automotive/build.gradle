@@ -17,6 +17,8 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'com.google.firebase.appdistribution'
+    id 'com.google.gms.google-services'
 }
 
 android {
@@ -38,8 +40,35 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            firebaseAppDistribution {
+                appId="1:930325196101:android:3ec5d1b4beb9a373b1622c"
+                releaseNotesFile="README.md"
+                testers="pochet.romuald@gmail.com"
+            }
         }
     }
+    flavorDimensions "version"
+    productFlavors {
+        demo {
+            dimension "version"
+            firebaseAppDistribution {
+                releaseNotes = "Release notes for demo version"
+                testers = "pochet.romuald@gmail.com"
+            }
+        }
+        full {
+            dimension "version"
+            firebaseAppDistribution {
+                releaseNotes = "Release notes for full version"
+                testers = "pochet.romuald@gmail.com"
+            }
+        }
+    }
+
+    lint {
+        baseline = file("lint-baseline.xml")
+    }
+
 }
 
 dependencies {
