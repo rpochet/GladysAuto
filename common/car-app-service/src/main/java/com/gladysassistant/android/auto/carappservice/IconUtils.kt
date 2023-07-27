@@ -15,7 +15,7 @@ object IconUtils {
         val resId: Int
         if (deviceFeature.category == CATEGORY_SWITCH &&
             (deviceFeature.type == TYPE_BINARY || deviceFeature.type == TYPE_DIMMER)) {
-            if (deviceFeature.last_value!! > 0)
+            if (deviceFeature.last_value != null && deviceFeature.last_value!! > 0)
                 resId = R.drawable.lightbulb_on_outline
             else
                 resId = R.drawable.lightbulb_outline

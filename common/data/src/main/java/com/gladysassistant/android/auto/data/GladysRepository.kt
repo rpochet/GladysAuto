@@ -17,23 +17,39 @@
 package com.gladysassistant.android.auto.data
 
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
+import androidx.car.app.CarContext
+import androidx.datastore.preferences.preferencesDataStore
 import com.android.volley.AuthFailureError
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.toolbox.HurlStack
 import com.android.volley.toolbox.Volley
+import com.gladysassistant.android.auto.data.model.Dashboard
 import com.gladysassistant.android.auto.data.model.Device
 import com.gladysassistant.android.auto.data.model.DeviceFeature
 import com.gladysassistant.android.auto.data.model.DeviceSetValueResponse
+import com.gladysassistant.android.utils.StoreUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.apache.http.conn.ssl.AllowAllHostnameVerifier
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 import kotlin.reflect.typeOf
 
 class GladysRepository(
     private val ctx: Context
 ) {
+    // private val Context.dataStore by preferencesDataStore(name = Constants.PREFERENCE_NAME)
+
     private var requestQueue: RequestQueue = Volley.newRequestQueue(ctx, object : HurlStack() {
         override fun createConnection(url: URL): HttpURLConnection {
             val connection = super.createConnection(url)
@@ -44,83 +60,116 @@ class GladysRepository(
         }
     })
 
-    fun login(callback: (String) -> Unit) {
+    suspend fun login() = suspendCoroutine { cont ->
         val loginRequest = GsonRequest<Map<String, String>>(
             Request.Method.POST,
             Constants.loginUrl,
+            /*GlobalScope.launch {
+                StoreUtils.getInstance(ctx.dataStore).userPreferencesFlow.apply {
+                    this.first().apply {
+                        mutableMapOf(
+                            Constants.PARAM_EMAIL to this.userId,
+                            Constants.PARAM_PASSWORD to this.userPassword,
+                        )
+                    }
+                }
+            },*/
             mutableMapOf(
-                "email" to "pochet.romuald@gmail.com",
-                "password" to "8Vyr7acpromuald"
+                Constants.PARAM_EMAIL to "pochet.romuald@gmail.com",
+                Constants.PARAM_PASSWORD to "8Vyr7acpromuald"
             ),
             typeOf<Map<String, String>>(),
-            mutableMapOf(Constants.CONTENT_TYPE to Constants.APPLICATION_JSON),
+            mutableMapOf(
+                Constants.CONTENT_TYPE to Constants.APPLICATION_JSON
+            ),
             {
-                val accessToken = it.getValue(Constants.ACCESS_TOKEN)
-                StoreUtils.set(Constants.ACCESS_TOKEN, accessToken)
-                StoreUtils.set(Constants.REFRESH_TOKEN, it.getValue(Constants.REFRESH_TOKEN))
-                callback(accessToken)
+                val accessToken = it.getValue(Constants.PARAM_ACCESS_TOKEN)
+                ctx.getSharedPreferences(Constants.PREFERENCE_NAME, MODE_PRIVATE).edit().apply {
+                    putString(Constants.PARAM_ACCESS_TOKEN, accessToken)
+                    putString(Constants.PARAM_REFRESH_TOKEN, it.getValue(Constants.PARAM_REFRESH_TOKEN))
+                    commit()
+                }
+                cont.resume(accessToken)
             }
-        ) { }
+        ) {
+            System.err.println(it.message)
+        }
         this.requestQueue.add(loginRequest)
     }
-    fun refreshAccessToken(callback: (String) -> Unit) {
+    suspend fun refreshAccessToken() = suspendCoroutine { cont ->
         val refreshTokenRequest = GsonRequest<Map<String, String>>(
             Request.Method.POST,
             Constants.tokenUrl,
             mutableMapOf(
-                "client_id" to "pochet.romuald@gmail.com",
-                "client_secret" to "8Vyr7acpromuald",
-                "refresh_token" to "${StoreUtils.get("$Constants.REFRESH_TOKEN")}",
-                "grant_type" to "refresh_token"
+                Constants.PARAM_CLIENT_ID to ctx.getSharedPreferences(Constants.PREFERENCE_NAME, MODE_PRIVATE).getString(Constants.USER_ID, "pochet.romuald@gmail.com"),
+                Constants.PARAM_CLIENT_SECRET to ctx.getSharedPreferences(Constants.PREFERENCE_NAME, MODE_PRIVATE).getString(Constants.USER_PASSWORD, "8Vyr7acpromuald"),
+                Constants.PARAM_REFRESH_TOKEN to ctx.getSharedPreferences(Constants.PREFERENCE_NAME, MODE_PRIVATE).getString(Constants.PARAM_REFRESH_TOKEN, ""),
+                Constants.PARAM_GRANT_TYPE to Constants.PARAM_REFRESH_TOKEN
             ),
             typeOf<Map<String, String>>(),
             mutableMapOf(Constants.CONTENT_TYPE to Constants.APPLICATION_JSON),
             {
-                val accessToken = it.getValue(Constants.ACCESS_TOKEN)
-                StoreUtils.set(Constants.ACCESS_TOKEN, accessToken)
-                // retryRequets.headers.set(Constants.HEADER_AUTHORIZATION, Constants.HEADER_AUTHORIZATION_BEARER + accessToken)
-                // this.requestQueue.add(retryRequets)
-                callback(accessToken)
+                val accessToken = it.getValue(Constants.PARAM_ACCESS_TOKEN)
+                ctx.getSharedPreferences(Constants.PREFERENCE_NAME, MODE_PRIVATE).edit().apply {
+                    putString(Constants.PARAM_ACCESS_TOKEN, accessToken)
+                    commit()
+                }
+                cont.resume(accessToken)
             }
-        ) { }
+        ) {
+            if (it is AuthFailureError) {
+                System.err.println("Refresh token is invalid, login...")
+                GlobalScope.launch(Dispatchers.IO) {
+                    withContext(Dispatchers.Default) {
+                        login()
+                    }
+                }
+            } else {
+                cont.resumeWithException(it)
+            }
+        }
         this.requestQueue.add(refreshTokenRequest)
     }
 
-    fun getDeviceFeatures(callback: (List<DeviceFeature>) -> Unit) {
-        val request = GsonRequest<List<Device>>(
+    suspend fun getDeviceFeatures(): List<DeviceFeature> = suspendCoroutine { cont ->
+        val request = GsonRequest<List<DeviceFeature>>(
             Request.Method.GET,
-            Constants.deviceUrl,
+            Constants.autoDevicesUrl,
             null,
-            typeOf<List<Device>>(),
-            mutableMapOf(Constants.HEADER_AUTHORIZATION to "${Constants.HEADER_AUTHORIZATION_BEARER} ${StoreUtils.get(Constants.ACCESS_TOKEN)}"),
-            {
-                var deviceFeatures = it
-                    //.filter { device -> device.room?.name.equals(Constants.ROOM_AUTO) }
-                    .flatMap {
-                        it.features
+            typeOf<List<DeviceFeature>>(),
+            /*GlobalScope.launch {
+                StoreUtils.getInstance(ctx.dataStore).tokenPreferencesFlow.apply {
+                    this.first().apply {
+                        mutableMapOf(
+                            Constants.HEADER_AUTHORIZATION to "${Constants.HEADER_AUTHORIZATION_BEARER} ${this.accessToken}"
+                        )
                     }
-                    .filter { it.category in Constants.ALLOWED_CATEGORY && it.type in Constants.ALLOWED_TYPE }
-                    .toList()
-                callback(deviceFeatures)
-            }
-        ) {
-            if( it is AuthFailureError) {
-                // refreshAccessToken(this::getDeviceFeatures, arrayOf(callback))
-                login {
-                    getDeviceFeatures(callback)
                 }
+            },*/
+            mutableMapOf(
+                Constants.HEADER_AUTHORIZATION to "${Constants.HEADER_AUTHORIZATION_BEARER} ${ctx.getSharedPreferences(Constants.PREFERENCE_NAME, MODE_PRIVATE).getString(Constants.PARAM_ACCESS_TOKEN, "")}"
+            ),
+            cont::resume
+        ) {
+            if (it is AuthFailureError) {
+                System.err.println("Refresh access token...")
+                GlobalScope.launch(Dispatchers.IO) {
+                    withContext(Dispatchers.Default) {
+                        refreshAccessToken()
+                        // login()
+                        cont.resume(getDeviceFeatures())
+                    }
+                }
+            } else {
+                cont.resumeWithException(it)
             }
         }
         this.requestQueue.add(request)
     }
 
-    fun getDeviceFeature(deviceFeatureId: String): DeviceFeature? {
-        return emptyList<DeviceFeature>().find { it.external_id == deviceFeatureId }
-    }
-
-    fun updateDeviceFeature(deviceFeature: DeviceFeature, callback: (DeviceSetValueResponse) -> Unit) {
+    suspend fun updateDeviceFeature(deviceFeature: DeviceFeature): DeviceSetValueResponse = suspendCoroutine<DeviceSetValueResponse> { cont ->
         var newValue = 0;
-        if (deviceFeature.last_value!! > 0) {
+        if (deviceFeature.last_value > 0) {
             newValue = 0
         } else {
             newValue = 1
@@ -133,14 +182,22 @@ class GladysRepository(
             ),
             typeOf<DeviceSetValueResponse>(),
             mutableMapOf(
-                Constants.HEADER_AUTHORIZATION to "${Constants.HEADER_AUTHORIZATION_BEARER} ${StoreUtils.get(Constants.ACCESS_TOKEN)}",
+                Constants.HEADER_AUTHORIZATION to "${Constants.HEADER_AUTHORIZATION_BEARER} ${ctx.getSharedPreferences(Constants.PREFERENCE_NAME, MODE_PRIVATE).getString(Constants.PARAM_ACCESS_TOKEN, "")}",
                 Constants.CONTENT_TYPE to Constants.APPLICATION_JSON
             ),
             {
-                callback(it)
+                cont.resume(it)
             },
             {
-
+                if (it is AuthFailureError) {
+                    // this::getDeviceFeatures, arrayOf(callback))
+                    GlobalScope.launch {
+                        //login()
+                        refreshAccessToken()
+                        cont.resume(updateDeviceFeature(deviceFeature))
+                    }
+                }
+                cont.resumeWithException(it)
             }
         );
         this.requestQueue.add(request)

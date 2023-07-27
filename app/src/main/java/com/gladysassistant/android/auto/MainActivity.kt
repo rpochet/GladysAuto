@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment.Companion.CenterVertically
@@ -41,8 +42,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.gladysassistant.android.auto.data.GladysRepository
+import com.gladysassistant.android.auto.data.model.DeviceFeature
 import com.gladysassistant.android.auto.data.model.toIntent
 import com.gladysassistant.android.auto.ui.theme.GladysTheme
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -94,7 +98,10 @@ fun ProjectionState(carConnectionType: Int, modifier: Modifier = Modifier) {
 @Composable
 fun DeviceFeatureList() {
     val context = LocalContext.current
-    val deviceFeatures = GladysRepository(context).getDeviceFeatures()
+    var deviceFeatures = arrayListOf<DeviceFeature>()
+    LaunchedEffect("DeviceFeatureList") {
+        deviceFeatures.addAll(GladysRepository(context).getDeviceFeatures())
+    }
     LazyColumn {
         items(deviceFeatures.size) {
             val deviceFeature = deviceFeatures[it]

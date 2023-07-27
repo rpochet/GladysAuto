@@ -16,12 +16,15 @@
 
 package com.gladysassistant.android.auto.carappservice
 
+import android.content.Context
 import android.content.Intent
 import androidx.car.app.CarAppService
 import androidx.car.app.Screen
 import androidx.car.app.Session
 import androidx.car.app.validation.HostValidator
+import androidx.datastore.preferences.preferencesDataStore
 import com.gladysassistant.android.auto.carappservice.screen.MainScreen
+import com.gladysassistant.android.auto.data.Constants
 
 class GladysCarAppService : CarAppService() {
 
@@ -35,6 +38,7 @@ class GladysCarAppService : CarAppService() {
 }
 
 class GladysSession : Session() {
+
     override fun onCreateScreen(intent: Intent): Screen {
         return MainScreen(carContext)
     }

@@ -16,8 +16,6 @@ import java.nio.charset.Charset
 import kotlin.reflect.KType
 import kotlin.reflect.javaType
 
-private const val ACCESS_TOKEN = "ACCESS_TOKEN"
-private const val REFRESH_TOKEN = "REFRESH_TOKEN"
 const val PROTOCOL_CHARSET = "utf-8"
 private val PROTOCOL_CONTENT_TYPE = String.format("application/json; charset=%s", PROTOCOL_CHARSET)
 

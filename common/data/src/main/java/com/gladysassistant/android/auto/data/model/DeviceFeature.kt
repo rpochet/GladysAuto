@@ -9,7 +9,7 @@ data class DeviceFeature(
     val name: String,
     val category: String,
     val type: String,
-    val last_value: Float? = null
+    val last_value: Float
 )
 
 fun DeviceFeature.toIntent(action: String): Intent {
